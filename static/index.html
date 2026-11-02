@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Drops</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:#000;
+  --card:#0c0f14;
+  --card2:#12161d;
+  --line:#1b212b;
+  --blue:#0a95ff;
+  --blue-d:#0b2a44;
+  --text:#fff;
+  --dim:#8a93a0;
+  --red:#ff5468;
+  --ok:#2ed47a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:"Manrope","SF Pro Display",-apple-system,"Segoe UI",Roboto,sans-serif;
+  overscroll-behavior:none;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 6px;gap:10px}
+.me{display:flex;align-items:center;gap:10px;min-width:0}
+.ava{width:44px;height:44px;border-radius:50%;background:var(--card2);border:2px solid var(--blue-d);
+  display:grid;place-items:center;font-weight:800;overflow:hidden;flex:none}
+.ava img{width:100%;height:100%;object-fit:cover}
+.me b{display:block;font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
+.me small{display:block;color:var(--dim);font-size:12px;font-weight:700;margin-top:1px}
+.right{display:flex;align-items:center;gap:8px}
+.bal{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+  border-radius:22px;padding:5px 5px 5px 16px;font-weight:800;font-size:18px}
+.plus{width:38px;height:38px;border-radius:50%;background:var(--blue-d);color:var(--blue);font-size:26px;line-height:1;display:grid;place-items:center}
+.gear{width:44px;height:44px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:grid;place-items:center}
+.gear svg{width:20px;height:20px;stroke:var(--dim)}
+
+/* screens */
+main{flex:1;overflow-y:auto;padding:10px 14px 130px;position:relative}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 10px 0}
+.empty img{width:150px;height:auto;border-radius:22px;margin-bottom:22px}
+.empty h2{margin:0;font-size:24px;font-weight:800}
+.empty h3{margin:6px 0 0;font-size:18px;font-weight:800}
+.empty p{margin:8px 0 26px;color:var(--dim);font-weight:600;font-size:15px;max-width:290px}
+.cta{width:100%;max-width:420px;background:var(--blue);color:#fff;border-radius:16px;padding:17px;font-weight:800;font-size:17px}
+.cta:active{filter:brightness(.9)}
+.cta[disabled]{background:var(--card2);color:var(--dim)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:10px;position:relative}
+.pic{aspect-ratio:1;border-radius:16px;background:var(--card2);display:grid;place-items:center;overflow:hidden;font-size:54px}
+.pic img{width:100%;height:100%;object-fit:cover}
+.item .nm{font-weight:800;font-size:15px;line-height:1.2;overflow-wrap:anywhere}
+.cnt{position:absolute;top:18px;right:18px;background:var(--blue);border-radius:12px;padding:2px 9px;font-weight:800;font-size:14px}
+.buy{background:var(--blue-d);color:var(--blue);border-radius:14px;padding:11px;font-weight:800;font-size:15px;display:flex;justify-content:center;align-items:center;gap:6px}
+.buy[disabled]{background:var(--card2);color:var(--dim)}
+.head{font-weight:800;font-size:20px;margin:6px 2px 12px}
+
+/* bottom nav */
+nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0));
+  display:flex;gap:4px;padding:5px;background:rgba(12,15,20,.92);border:1px solid var(--line);border-radius:34px;
+  width:min(330px,calc(100vw - 28px));backdrop-filter:blur(14px);z-index:20}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0 8px;border-radius:28px;color:var(--dim);font-weight:800;font-size:12px}
+nav button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--blue);background:var(--blue-d)}
+
+/* floating drop */
+.drop{position:fixed;z-index:15;width:84px;text-align:center;animation:bob 2.4s ease-in-out infinite}
+.drop img{width:84px;display:block;border-radius:18px;filter:drop-shadow(0 0 18px rgba(10,149,255,.55))}
+.drop span{display:inline-block;margin-top:6px;background:rgba(0,0,0,.75);border:1px solid var(--blue-d);border-radius:12px;padding:3px 9px;font-size:12px;font-weight:800;color:#cfe8ff}
+@keyframes bob{50%{transform:translateY(-10px)}}
+@media (prefers-reduced-motion:reduce){.drop{animation:none}}
+
+/* sheets */
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:none}
+.veil.on{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#07090d;border-top:1px solid var(--line);
+  border-radius:28px 28px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0));max-height:88vh;overflow-y:auto;
+  transform:translateY(105%);transition:transform .25s ease}
+.sheet.on{transform:none}
+.sheet h2{margin:0 0 14px;font-size:21px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.x{width:36px;height:36px;border-radius:50%;background:var(--card);color:var(--dim);font-size:20px}
+.sec{margin:18px 0 8px;font-weight:800;font-size:15px;color:var(--dim)}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>*{flex:1;min-width:0}
+input,select{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;width:100%;outline:none;font-weight:700}
+input:focus,select:focus{border-color:var(--blue)}
+select{appearance:none}
+.chips{display:flex;gap:8px;margin-bottom:12px}
+.chip{flex:1;padding:12px 0;border-radius:14px;background:var(--card);border:1px solid var(--line);font-weight:800}
+.chip.on{background:var(--blue-d);border-color:var(--blue);color:var(--blue)}
+.note{color:var(--dim);font-size:13px;font-weight:600;line-height:1.4;margin:8px 0 12px}
+.copy{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;font-weight:700;font-size:13px}
+.copy code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#cfe8ff}
+.copy button{color:var(--blue);font-weight:800;flex:none}
+.sec-btn{width:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;font-weight:800;margin-top:8px}
+.list{display:flex;flex-direction:column;gap:8px}
+.arow{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:10px;display:flex;gap:10px;align-items:center}
+.arow .pic{width:54px;aspect-ratio:1;font-size:26px;border-radius:12px;flex:none;cursor:pointer}
+.arow .f{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
+.arow .f .nm{grid-column:1/3;font-weight:800;font-size:14px}
+.arow input{padding:8px 10px;font-size:14px;border-radius:10px}
+.lbl{font-size:11px;color:var(--dim);font-weight:700;margin-bottom:2px}
+.mini{background:var(--blue-d);color:var(--blue);border-radius:10px;padding:8px 10px;font-weight:800;font-size:13px}
+.mini.red{background:#2b1218;color:var(--red)}
+.file{display:flex;align-items:center;gap:12px;background:var(--card);border:1px dashed #2a3340;border-radius:16px;padding:12px;margin-bottom:8px;font-weight:700;color:var(--dim)}
+.file .pic{width:56px;font-size:24px;border-radius:12px;flex:none}
+.pct{color:var(--blue);font-weight:800}
+.chk{display:flex;align-items:center;gap:10px;margin:4px 0 12px;font-weight:700}
+.chk input{width:22px;height:22px;padding:0;accent-color:var(--blue)}
+
+/* prize modal */
+.prize{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.82);display:none;place-items:center}
+.prize.on{display:grid}
+.pbox{background:var(--card);border:1px solid var(--blue-d);border-radius:28px;padding:26px 22px;width:min(320px,86vw);text-align:center;animation:pop .28s ease}
+.pbox .pic{width:150px;margin:0 auto 16px;font-size:72px}
+.pbox h3{margin:0 0 4px;font-size:22px;font-weight:800}
+.pbox p{margin:0 0 20px;color:var(--dim);font-weight:700}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0));transform:translate(-50%,-90px);z-index:80;background:var(--card2);border:1px solid var(--line);
+  border-radius:16px;padding:12px 18px;font-weight:800;font-size:14px;transition:transform .25s;max-width:90vw;text-align:center}
+.toast.on{transform:translate(-50%,0)}
+.toast.bad{border-color:#5a2230;color:#ff9aa8}
+.toast.good{border-color:#1d5a3c;color:#8ff0bd}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="me">
+      <div class="ava" id="ava"></div>
+      <div><b id="uname">…</b></div>
+    </div>
+    <div class="right">
+      <button class="gear" id="gear" hidden aria-label="Админ-панель">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <div class="bal"><span id="coins">0</span><button class="plus" id="topup" aria-label="Пополнить">+</button></div>
+    </div>
+  </div>
+
+  <main id="main"></main>
+
+  <nav>
+    <button data-tab="inv" class="on">
+      <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Инвентарь
+    </button>
+    <button data-tab="shop">
+      <svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Магазин
+    </button>
+  </nav>
+</div>
+
+<div id="drops"></div>
+<div class="veil" id="veil"></div>
+
+<!-- пополнение -->
+<section class="sheet" id="sh-top">
+  <h2>Пополнить<button class="x" data-close>×</button></h2>
+  <div class="chips" id="chips"></div>
+  <div class="note" id="topNote"></div>
+  <button class="cta" id="openWallet">Открыть кошелёк</button>
+  <div class="sec">Или переведите вручную</div>
+  <div class="copy"><code id="tAddr"></code><button data-copy="tAddr">Копировать</button></div>
+  <div class="copy"><code id="tCom"></code><button data-copy="tCom">Копировать</button></div>
+  <div class="note">Комментарий обязателен — по нему монеты попадут на ваш баланс. Обычно это занимает до минуты.</div>
+  <button class="sec-btn" id="checkPay">Проверить оплату</button>
+</section>
+
+<!-- админ -->
+<section class="sheet" id="sh-adm">
+  <h2>Админ-панель<button class="x" data-close>×</button></h2>
+
+  <div class="sec">Новый дроп</div>
+  <div class="row"><input id="dN" type="number" inputmode="numeric" placeholder="Активаций" min="1"></div>
+  <div class="row">
+    <input id="dT" type="number" inputmode="numeric" placeholder="Время на сбор" min="1">
+    <select id="dU"><option value="1">сек</option><option value="60" selected>мин</option><option value="3600">часов</option></select>
+  </div>
+  <label class="chk"><input id="dNotify" type="checkbox" checked>Позвать всех сообщением в боте</label>
+  <button class="cta" id="mkDrop">Запустить дроп</button>
+
+  <div class="sec">Что выпадает</div>
+  <div class="note" id="sumNote"></div>
+  <div class="list" id="aItems"></div>
+
+  <div class="sec">Добавить предмет</div>
+  <label class="file"><div class="pic" id="nPic">＋</div><span>Выберите фото предмета</span><input type="file" id="nFile" accept="image/*" hidden></label>
+  <div class="row"><input id="nName" placeholder="Название"></div>
+  <div class="row"><input id="nChance" type="number" inputmode="decimal" placeholder="Шанс, %"><input id="nPrice" type="number" inputmode="numeric" placeholder="Цена, монет"></div>
+  <button class="cta" id="addItem">Добавить</button>
+  <div class="note">Остальные шансы пересчитаются сами. Предмет сразу появится в магазине.</div>
+
+  <div class="sec">Последние дропы</div>
+  <div class="list" id="aDrops"></div>
+
+  <div class="sec">Выдать монеты</div>
+  <div class="row"><input id="gId" type="number" inputmode="numeric" placeholder="ID пользователя"><input id="gAmt" type="number" inputmode="numeric" placeholder="Монет"></div>
+  <button class="sec-btn" id="give">Выдать</button>
+  <div class="note" id="usersNote"></div>
+  <input type="file" id="editFile" accept="image/*" hidden>
+</section>
+
+<div class="prize" id="prize"><div class="pbox">
+  <div class="pic" id="pPic"></div><h3 id="pName"></h3><p>Добавлено в инвентарь</p>
+  <button class="cta" id="pOk">Класс</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+try{ tg?.setHeaderColor('#000000'); tg?.setBackgroundColor('#000000'); tg?.disableVerticalSwipes?.(); }catch(e){}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n).toLocaleString('ru-RU');
+const devUid = new URLSearchParams(location.search).get('uid');
+
+async function api(path, body){
+  const r = await fetch('/api/' + path + (devUid ? (path.includes('?')?'&':'?') + 'uid=' + devUid : ''), {
+    method: body ? 'POST' : 'GET',
+    headers: {'Content-Type':'application/json','X-Init-Data': tg?.initData || ''},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(j.error || 'Ошибка сети');
+  return j;
+}
+
+let S = null, tab = 'inv', toastT;
+const pos = {};
+
+function toast(msg, kind){
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast on ' + (kind || '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', 2600);
+}
+const haptic = k => { try{ tg?.HapticFeedback?.notificationOccurred(k); }catch(e){} };
+
+function pic(it){
+  return it.photo ? `<img src="${esc(it.photo)}" alt="">` : esc(it.emoji || '🎁');
+}
+
+/* ───── отрисовка ───── */
+function render(){
+  if(!S) return;
+  $('#uname').textContent = S.user.name;
+  $('#coins').textContent = fmt(S.user.coins);
+  $('#gear').hidden = !S.is_admin;
+  const photo = tg?.initDataUnsafe?.user?.photo_url;
+  $('#ava').innerHTML = photo ? `<img src="${esc(photo)}" alt="">` : esc((S.user.name || '?')[0].toUpperCase());
+
+  const m = $('#main');
+  if(tab === 'inv'){
+    if(!S.inventory.length){
+      m.innerHTML = `<div class="empty"><img src="/static/icons/gift2.png" alt="">
+        <h2>Инвентарь пуст</h2><h3>Дропов ещё не было?</h3>
+        <p>Когда на экране появится подарок — нажмите на него, пока не закончилось время.</p>
+        <button class="cta" id="goShop">Открыть магазин</button></div>`;
+      $('#goShop').onclick = () => setTab('shop');
+    } else {
+      m.innerHTML = `<div class="head">Ваши призы</div><div class="grid">` + S.inventory.map(i =>
+        `<div class="item"><div class="pic">${pic(i)}</div><div class="cnt">×${i.count}</div><div class="nm">${esc(i.name)}</div></div>`).join('') + `</div>`;
+    }
+  } else {
+    if(!S.shop.length){ m.innerHTML = `<div class="empty"><h2>Магазин пуст</h2></div>`; }
+    else m.innerHTML = `<div class="head">Магазин</div><div class="grid">` + S.shop.map(i =>
+      `<div class="item"><div class="pic">${pic(i)}</div><div class="nm">${esc(i.name)}</div>` +
+      (i.price ? `<button class="buy" data-buy="${i.id}">${fmt(i.price)} монет</button>` : `<button class="buy" disabled>Цена не задана</button>`) + `</div>`).join('') + `</div>`;
+    m.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(+b.dataset.buy));
+  }
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  renderDrops();
+}
+
+function renderDrops(){
+  const box = $('#drops');
+  const ids = new Set(S.drops.map(d => d.id));
+  box.querySelectorAll('.drop').forEach(el => { if(!ids.has(+el.dataset.id)) el.remove(); });
+  S.drops.slice(0, 3).forEach(d => {
+    let el = box.querySelector(`.drop[data-id="${d.id}"]`);
+    if(!el){
+      if(!pos[d.id]) pos[d.id] = { x: 6 + Math.random() * 62, y: 18 + Math.random() * 48 };
+      el = document.createElement('button');
+      el.className = 'drop'; el.dataset.id = d.id;
+      el.style.left = pos[d.id].x + 'vw'; el.style.top = pos[d.id].y + 'vh';
+      el.innerHTML = `<img src="/static/icons/gift${d.icon}.png" alt="Дроп"><span></span>`;
+      el.onclick = () => claim(d.id, el);
+      box.appendChild(el);
+    }
+    d._t = Date.now() + d.seconds * 1000;
+    el.dataset.until = d._t; el.dataset.left = d.left;
+  });
+  tickDrops();
+}
+function tickDrops(){
+  document.querySelectorAll('.drop').forEach(el => {
+    const s = Math.max(0, Math.round((+el.dataset.until - Date.now()) / 1000));
+    el.querySelector('span').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')} · ${el.dataset.left} шт`;
+    if(s <= 0) el.remove();
+  });
+}
+setInterval(tickDrops, 500);
+
+function setTab(t){ tab = t; $('#main').scrollTop = 0; refresh.sig = null; render(); }
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+/* ───── действия ───── */
+async function refresh(){
+  try{
+    const n = await api('state');
+    const sig = JSON.stringify([n.user, n.inventory, n.shop, n.is_admin, tab]);
+    const changed = sig !== refresh.sig; refresh.sig = sig; S = n;
+    if(changed) render(); else renderDrops();
+  }
+  catch(e){ if(!S) $('#main').innerHTML = `<div class="empty"><h2>Не удалось войти</h2><p>${esc(e.message)}</p></div>`; }
+}
+
+async function claim(id, el){
+  el.style.pointerEvents = 'none';
+  try{
+    const r = await api('claim', {id});
+    el.remove();
+    haptic('success');
+    $('#pPic').innerHTML = pic(r.item); $('#pName').textContent = r.item.name;
+    $('#prize').classList.add('on');
+  }catch(e){ haptic('error'); toast(e.message, 'bad'); el.remove(); }
+  refresh();
+}
+$('#pOk').onclick = () => $('#prize').classList.remove('on');
+
+async function buy(id){
+  try{ await api('buy', {item_id: id}); haptic('success'); toast('Куплено — в инвентаре', 'good'); }
+  catch(e){ haptic('error'); toast(e.message, 'bad'); }
+  refresh();
+}
+
+/* ───── шторки ───── */
+let openSheet = null;
+function sheet(id){
+  if(openSheet) $(openSheet).classList.remove('on');
+  openSheet = id; $(id).classList.add('on'); $('#veil').classList.add('on');
+}
+function closeSheets(){
+  if(openSheet) $(openSheet).classList.remove('on');
+  openSheet = null; $('#veil').classList.remove('on');
+}
+$('#veil').onclick = closeSheets;
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
+
+/* ───── пополнение ───── */
+let tonAmt = 1;
+function drawTop(){
+  $('#chips').innerHTML = [1,2,5,10].map(n => `<button class="chip ${n===tonAmt?'on':''}" data-n="${n}">${n} TON</button>`).join('');
+  $('#chips').querySelectorAll('.chip').forEach(c => c.onclick = () => { tonAmt = +c.dataset.n; drawTop(); });
+  $('#topNote').textContent = `${tonAmt} TON = ${fmt(tonAmt * S.ton.rate)} монет`;
+  $('#tAddr').textContent = S.ton.address || 'адрес не настроен';
+  $('#tCom').textContent = S.ton.comment;
+}
+$('#topup').onclick = () => { drawTop(); sheet('#sh-top'); };
+$('#openWallet').onclick = () => {
+  if(!S.ton.address) return toast('Адрес кошелька не настроен', 'bad');
+  const url = `ton://transfer/${S.ton.address}?amount=${tonAmt * 1e9}&text=${encodeURIComponent(S.ton.comment)}`;
+  tg?.openLink ? tg.openLink(url) : (location.href = url);
+};
+document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
+  try{ await navigator.clipboard.writeText($('#' + b.dataset.copy).textContent); toast('Скопировано', 'good'); }catch(e){ toast('Не удалось скопировать', 'bad'); }
+});
+$('#checkPay').onclick = async () => {
+  const before = S.user.coins;
+  try{ await api('deposit/check', {}); await refresh();
+    S.user.coins > before ? toast(`+${fmt(S.user.coins - before)} монет`, 'good') : toast('Платёж пока не найден — подождите минуту'); }
+  catch(e){ toast(e.message, 'bad'); }
+};
+
+/* ───── админка ───── */
+let A = null, newPhoto = null;
+function fileToData(file, max = 256){
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      let d = c.toDataURL('image/webp', .85); if(!d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
+      res(d);
+    };
+    img.onerror = () => rej(new Error('Не удалось открыть фото'));
+    img.src = url;
+  });
+}
+async function loadAdmin(){
+  try{ A = await api('admin/data'); }catch(e){ return toast(e.message, 'bad'); }
+  $('#sumNote').textContent = 'Сумма шансов всегда 100%. Измените шанс — остальные подстроятся.';
+  $('#usersNote').textContent = `Пользователей в боте: ${A.users}`;
+  $('#aItems').innerHTML = A.items.map(i => `
+    <div class="arow" data-id="${i.id}">
+      <div class="pic" data-photo="${i.id}">${pic(i)}</div>
+      <div class="f">
+        <div class="nm">${esc(i.name)} <span class="pct">${+i.chance.toFixed(2)}%</span></div>
+        <div><div class="lbl">Шанс, %</div><input data-f="chance" type="number" inputmode="decimal" value="${+i.chance.toFixed(2)}"></div>
+        <div><div class="lbl">Цена, монет</div><input data-f="price" type="number" inputmode="numeric" value="${i.price ?? ''}" placeholder="—"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="mini" data-save="${i.id}">Сохр.</button><button class="mini red" data-del="${i.id}">Удал.</button></div>
+    </div>`).join('');
+  $('#aItems').querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
+    const row = b.closest('.arow');
+    try{ await api('admin/item/update', { id: +b.dataset.save,
+      chance: row.querySelector('[data-f=chance]').value, price: row.querySelector('[data-f=price]').value });
+      toast('Сохранено', 'good'); await loadAdmin(); refresh(); }catch(e){ toast(e.message, 'bad'); }
+  });
+  $('#aItems').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if(!confirm('Удалить предмет? Он пропадёт из дропов и магазина.')) return;
+    try{ await api('admin/item/delete', {id: +b.dataset.del}); await loadAdmin(); refresh(); }catch(e){ toast(e.message, 'bad'); }
+  });
+  $('#aItems').querySelectorAll('[data-photo]').forEach(p => p.onclick = () => { editId = +p.dataset.photo; $('#editFile').click(); });
+  $('#aDrops').innerHTML = A.drops.length ? A.drops.map(d => `
+    <div class="arow"><img src="/static/icons/gift${d.icon}.png" style="width:48px;border-radius:10px" alt="">
+      <div style="flex:1;font-weight:800;font-size:14px">#${d.id} · ${d.claimed}/${d.total}
+        <div class="lbl">${d.cancelled ? 'отменён' : d.active ? 'идёт, ещё ' + Math.ceil(d.seconds/60) + ' мин' : 'завершён'}</div></div>
+      ${d.active ? `<button class="mini red" data-cancel="${d.id}">Стоп</button>` : ''}</div>`).join('') : '<div class="note">Пока пусто</div>';
+  $('#aDrops').querySelectorAll('[data-cancel]').forEach(b => b.onclick = async () => {
+    await api('admin/drop/cancel', {id: +b.dataset.cancel}); loadAdmin(); refresh();
+  });
+}
+let editId = null;
+$('#editFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f || !editId) return;
+  try{ await api('admin/item/update', {id: editId, photo: await fileToData(f)}); toast('Фото обновлено', 'good'); await loadAdmin(); refresh(); }
+  catch(err){ toast(err.message, 'bad'); }
+};
+$('#gear').onclick = () => { sheet('#sh-adm'); loadAdmin(); };
+
+$('#nFile').onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{ newPhoto = await fileToData(f); $('#nPic').innerHTML = `<img src="${newPhoto}" alt="">`; }catch(err){ toast(err.message, 'bad'); }
+};
+$('#addItem').onclick = async () => {
+  if(!newPhoto) return toast('Сначала выберите фото', 'bad');
+  try{
+    await api('admin/item', { name: $('#nName').value, chance: $('#nChance').value, price: $('#nPrice').value, photo: newPhoto });
+    newPhoto = null; $('#nPic').textContent = '＋'; ['#nName','#nChance','#nPrice'].forEach(s => $(s).value = '');
+    toast('Предмет добавлен', 'good'); await loadAdmin(); refresh();
+  }catch(e){ toast(e.message, 'bad'); }
+};
+$('#mkDrop').onclick = async () => {
+  const seconds = Math.round(+$('#dT').value * +$('#dU').value);
+  try{
+    await api('admin/drop', { total: $('#dN').value, seconds, notify: $('#dNotify').checked });
+    toast('Дроп запущен', 'good'); $('#dN').value = $('#dT').value = ''; await loadAdmin(); refresh();
+  }catch(e){ toast(e.message, 'bad'); }
+};
+$('#give').onclick = async () => {
+  try{ const r = await api('admin/give', { user_id: $('#gId').value, amount: $('#gAmt').value });
+    toast(`Баланс: ${fmt(r.coins)}`, 'good'); $('#gAmt').value = ''; refresh(); }catch(e){ toast(e.message, 'bad'); }
+};
+
+refresh();
+setInterval(refresh, 3000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) refresh(); });
+</script>
+</body>
+</html>
