@@ -164,10 +164,47 @@ select{appearance:none}
 .toast.on{transform:translate(-50%,0)}
 .toast.bad{border-color:#7a2a40;color:#ffb0c0}
 .toast.good{border-color:#2a7a55;color:#9ff5c8}
+
+/* ===== полировка ===== */
+#gl{position:absolute;inset:0;width:100%;height:100%;display:none}
+.bg.gl #gl{display:block}
+.bg.gl .blob,.bg.gl .girl{display:none}
+.top{background:linear-gradient(180deg,rgba(7,2,10,.55),transparent)}
+.me b{background:linear-gradient(90deg,#fff,#ffc2e2);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
+.coin{width:20px;height:20px;border-radius:50%;flex:none;position:relative;
+  background:radial-gradient(circle at 32% 28%,#fff6c8,#ffc94d 45%,#e0891a);
+  box-shadow:inset 0 -2px 3px rgba(150,70,0,.5),0 0 12px rgba(255,200,80,.55)}
+.coin::after{content:"";position:absolute;inset:5px;border-radius:50%;border:1.5px solid rgba(160,80,0,.45)}
+.bal{padding-left:12px}
+.head{background:linear-gradient(90deg,#fff 30%,#ffb3da);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 10px rgba(0,0,0,.55))}
+.item{animation:rise .5s cubic-bezier(.2,.9,.3,1) both;transition:transform .2s}
+.item:active{transform:scale(.97)}
+.grid .item:nth-child(2){animation-delay:.06s}.grid .item:nth-child(3){animation-delay:.12s}
+.grid .item:nth-child(4){animation-delay:.18s}.grid .item:nth-child(n+5){animation-delay:.24s}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.96)}}
+.pic{position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 0 30px rgba(255,110,180,.18)}
+.pic::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(120deg,transparent 35%,rgba(255,255,255,.18) 48%,transparent 60%);transform:translateX(-120%);animation:shine 5s ease-in-out infinite}
+@keyframes shine{55%,100%{transform:translateX(120%)}}
+.buy{background:linear-gradient(145deg,rgba(255,140,200,.35),rgba(224,64,143,.2));color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 14px rgba(255,80,160,.25)}
+.buy:active{filter:brightness(.9)}
+.buy[disabled]{box-shadow:none}
+nav{box-shadow:var(--spec),0 0 40px rgba(255,80,160,.18)}
+nav button:active{transform:scale(.94)}
+.drop img{animation:glow 2s ease-in-out infinite}
+@keyframes glow{50%{filter:drop-shadow(0 0 30px rgba(255,120,190,.95))}}
+.pbox{position:relative}
+.pbox::before{content:"";position:absolute;left:50%;top:14px;width:190px;height:190px;margin-left:-95px;border-radius:50%;z-index:-1;
+  background:conic-gradient(#ff6eb4,transparent,#ffa6d5,transparent,#ff6eb4);filter:blur(22px);opacity:.75;animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+.pbox h3{background:linear-gradient(90deg,#fff,#ffb3da);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hint{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0));transform:translateX(-50%);z-index:10;
+  font-size:12px;font-weight:700;color:rgba(255,200,230,.75);letter-spacing:.3px;pointer-events:none;transition:opacity .6s;white-space:nowrap}
 </style>
 </head>
 <body>
-<div class="bg"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><div class="girl"></div></div>
+<div class="bg"><canvas id="gl"></canvas><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><div class="girl"></div></div>
 <div id="app">
   <div class="top">
     <div class="me">
@@ -178,7 +215,7 @@ select{appearance:none}
       <button class="gear" id="gear" hidden aria-label="Админ-панель">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       </button>
-      <div class="bal"><span id="coins">0</span><button class="plus" id="topup" aria-label="Пополнить">+</button></div>
+      <div class="bal"><i class="coin"></i><span id="coins">0</span><button class="plus" id="topup" aria-label="Пополнить">+</button></div>
     </div>
   </div>
 
@@ -249,6 +286,7 @@ select{appearance:none}
   <div class="pic" id="pPic"></div><h3 id="pName"></h3><p id="pSub">Добавлено в инвентарь</p>
   <button class="cta" id="pOk">Класс</button>
 </div></div>
+<div class="hint" id="hint">проведи пальцем по фону ✦</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -507,6 +545,144 @@ $('#give').onclick = async () => {
 refresh();
 setInterval(refresh, 3000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) refresh(); });
+</script>
+
+<script>
+/* Жидкий фон: водишь пальцем — картинка размазывается, потом медленно возвращается */
+(function(){
+  const bg = document.querySelector('.bg'), cv = document.getElementById('gl');
+  const gl = cv.getContext('webgl', {antialias:false, alpha:false});
+  if(!gl) return;
+  const VS = 'attribute vec2 p;varying vec2 uv;void main(){uv=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
+  const FS_ADV = 'precision mediump float;varying vec2 uv;uniform sampler2D uC;uniform vec2 a,d;uniform float r,asp;' +
+    'void main(){vec2 pa=uv-a;pa.x*=asp;vec2 ab=d;ab.x*=asp;' +
+    'float t=clamp(dot(pa,ab)/max(dot(ab,ab),1e-8),0.,1.);vec2 q=pa-ab*t;' +
+    'float f=exp(-dot(q,q)/(r*r));gl_FragColor=texture2D(uC,uv-d*f);}';
+  const FS_RLX = 'precision mediump float;varying vec2 uv;uniform sampler2D uC,uB;uniform float k,t;' +
+    'void main(){vec2 w=vec2(sin(t+uv.y*5.),cos(t*.8+uv.x*4.))*.004*step(.0001,k);' +
+    'gl_FragColor=mix(texture2D(uC,uv),texture2D(uB,uv+w),k);}';
+  function prog(fs){
+    const mk=(t,src)=>{const sh=gl.createShader(t);gl.shaderSource(sh,src);gl.compileShader(sh);
+      if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));return sh;};
+    const pr=gl.createProgram();gl.attachShader(pr,mk(gl.VERTEX_SHADER,VS));gl.attachShader(pr,mk(gl.FRAGMENT_SHADER,fs));
+    gl.bindAttribLocation(pr,0,'p');gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS)) throw new Error('link');
+    const u={};pr.u=n=>u[n]||(u[n]=gl.getUniformLocation(pr,n));return pr;
+  }
+  let adv, rlx;
+  try{ adv = prog(FS_ADV); rlx = prog(FS_RLX); }catch(e){ return; }
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+
+  let W=0,H=0, base=null, T=[], cur=0, queue=[], lastAct=0, raf=0;
+  const girl = new Image(); let girlOk = false;
+
+  function tex(w,h){
+    const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null); return t;
+  }
+  function fbo(){
+    const t=tex(W,H), f=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0); return {t,f};
+  }
+  function bind(unit,t){ gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D,t); }
+
+  function baseCanvas(){
+    const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+    const m=Math.max(W,H);
+    const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#14040f'); g.addColorStop(.55,'#1e0717'); g.addColorStop(1,'#07020a');
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    const blob=(cx,cy,r,col,al)=>{const rg=x.createRadialGradient(cx,cy,0,cx,cy,r);
+      rg.addColorStop(0,col);rg.addColorStop(1,'rgba(0,0,0,0)');x.globalAlpha=al;x.fillStyle=rg;x.fillRect(cx-r,cy-r,r*2,r*2);};
+    blob(W*.1,H*.08,m*.62,'#ff3d9a',.85); blob(W*.98,H*.42,m*.5,'#b0237f',.8);
+    blob(W*.3,H*.98,m*.5,'#ff7ab8',.5);  blob(W*.85,H*.02,m*.4,'#7a1f86',.6);
+    blob(W*.5,H*.5,m*.35,'#ff4fa5',.25);
+    // шёлковые разводы — их красиво размазывать
+    x.lineCap='round';
+    for(let i=0;i<12;i++){
+      x.globalAlpha=.10+Math.random()*.16; x.lineWidth=W*(.012+Math.random()*.05);
+      x.strokeStyle=['#ffffff','#ff8cc6','#ff4fa5','#c04bd6'][i%4];
+      const y=Math.random()*H; x.beginPath(); x.moveTo(-20,y);
+      x.bezierCurveTo(W*.3,y-H*.25*Math.random(),W*.7,y+H*.25*Math.random(),W+20,y+(Math.random()-.5)*H*.4); x.stroke();
+    }
+    x.globalAlpha=1;
+    if(girlOk){
+      const S=Math.min(W*1.2,H*.72), t=document.createElement('canvas'); t.width=t.height=S; const y=t.getContext('2d');
+      y.drawImage(girl,0,0,S,S); y.globalCompositeOperation='destination-in';
+      const rg=y.createRadialGradient(S/2,S*.45,S*.12,S/2,S*.45,S*.5); rg.addColorStop(0,'#000');rg.addColorStop(.55,'rgba(0,0,0,.85)');rg.addColorStop(1,'rgba(0,0,0,0)');
+      y.fillStyle=rg; y.fillRect(0,0,S,S);
+      x.globalAlpha=.8; x.drawImage(t,W-S*.82,H-S*.88,S,S); x.globalAlpha=1;
+    }
+    return c;
+  }
+
+  function setup(){
+    const sc=Math.min(window.devicePixelRatio||1,2)*.55;
+    W=Math.max(2,Math.round(innerWidth*sc)); H=Math.max(2,Math.round(innerHeight*sc));
+    cv.width=W; cv.height=H;
+    T.forEach(o=>{gl.deleteTexture(o.t);gl.deleteFramebuffer(o.f);}); if(base) gl.deleteTexture(base);
+    base=tex(W,H); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.bindTexture(gl.TEXTURE_2D,base); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,baseCanvas());
+    T=[fbo(),fbo()]; cur=0; queue=[];
+    gl.viewport(0,0,W,H);
+    gl.useProgram(rlx); gl.bindFramebuffer(gl.FRAMEBUFFER,T[0].f);
+    bind(0,base); bind(1,base); gl.uniform1i(rlx.u('uC'),0); gl.uniform1i(rlx.u('uB'),1);
+    gl.uniform1f(rlx.u('k'),0); gl.uniform1f(rlx.u('t'),0); gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+    present(); kick();
+  }
+  function present(){
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.useProgram(rlx);
+    bind(0,T[cur].t); bind(1,base); gl.uniform1i(rlx.u('uC'),0); gl.uniform1i(rlx.u('uB'),1);
+    gl.uniform1f(rlx.u('k'),0); gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  }
+  function frame(now){
+    raf=0; let n=0;
+    gl.viewport(0,0,W,H);
+    while(queue.length && n++<8){
+      const s=queue.shift(), nx=1-cur;
+      gl.useProgram(adv); gl.bindFramebuffer(gl.FRAMEBUFFER,T[nx].f); bind(0,T[cur].t);
+      gl.uniform1i(adv.u('uC'),0); gl.uniform2f(adv.u('a'),s[0],s[1]); gl.uniform2f(adv.u('d'),s[2],s[3]);
+      gl.uniform1f(adv.u('r'),.14); gl.uniform1f(adv.u('asp'),W/H);
+      gl.drawArrays(gl.TRIANGLE_STRIP,0,4); cur=nx;
+    }
+    // медленно возвращаем к исходной картинке (+ лёгкое «дыхание»)
+    const nx=1-cur; gl.useProgram(rlx); gl.bindFramebuffer(gl.FRAMEBUFFER,T[nx].f);
+    bind(0,T[cur].t); bind(1,base); gl.uniform1i(rlx.u('uC'),0); gl.uniform1i(rlx.u('uB'),1);
+    gl.uniform1f(rlx.u('k'),.0028); gl.uniform1f(rlx.u('t'),now/1000);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4); cur=nx;
+    present();
+    if(queue.length || performance.now()-lastAct<9000) raf=requestAnimationFrame(frame);
+  }
+  function kick(){ lastAct=performance.now(); if(!raf && !document.hidden) raf=requestAnimationFrame(frame); }
+
+  function push(x0,y0,x1,y1){
+    const w=innerWidth,h=innerHeight;
+    let dx=(x1-x0)/w, dy=-(y1-y0)/h; const L=Math.hypot(dx,dy); if(L<1e-5) return;
+    const cap=.28; if(L>cap){dx*=cap/L;dy*=cap/L;}
+    if(queue.length>24) queue.shift();
+    queue.push([x0/w,1-y0/h,dx,dy]); kick();
+    const hint=document.getElementById('hint'); if(hint){hint.style.opacity=0;setTimeout(()=>hint.remove(),700);}
+  }
+  const last={};
+  addEventListener('touchstart',e=>{for(const t of e.changedTouches) last[t.identifier]=[t.clientX,t.clientY];},{passive:true});
+  addEventListener('touchmove',e=>{for(const t of e.changedTouches){const l=last[t.identifier];
+    if(l) push(l[0],l[1],t.clientX,t.clientY); last[t.identifier]=[t.clientX,t.clientY];}},{passive:true});
+  const end=e=>{for(const t of e.changedTouches) delete last[t.identifier];};
+  addEventListener('touchend',end,{passive:true}); addEventListener('touchcancel',end,{passive:true});
+  let md=null;
+  addEventListener('mousedown',e=>{md=[e.clientX,e.clientY];});
+  addEventListener('mousemove',e=>{if(md&&e.buttons&1){push(md[0],md[1],e.clientX,e.clientY);md=[e.clientX,e.clientY];}});
+  addEventListener('mouseup',()=>{md=null;});
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) kick(); });
+  let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(setup,250);});
+
+  girl.onload=()=>{girlOk=true;setup();}; girl.onerror=()=>{};
+  try{ setup(); bg.classList.add('gl'); }catch(e){ return; }
+  girl.src='/static/girl.jpg';
+})();
 </script>
 </body>
 </html>
