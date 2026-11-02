@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import random
+import re
 import time
 from pathlib import Path
 from urllib.parse import parse_qsl, quote
@@ -44,8 +45,8 @@ def default_db():
     return {
         "users": {},
         "items": [
-            {"id": 1, "name": "20 maksenet", "photo": None, "emoji": "🪙", "chance": 80.0, "price": None},
-            {"id": 2, "name": "Войс донат", "photo": None, "emoji": "🎙", "chance": 20.0, "price": None},
+            {"id": 1, "name": "20 maksenet", "photo": None, "emoji": "🪙", "chance": 80.0, "price": None, "coins": 20},
+            {"id": 2, "name": "Войс донат", "photo": None, "emoji": "🎙", "chance": 20.0, "price": None, "coins": None},
         ],
         "drops": [],
         "seen_tx": [],
@@ -74,6 +75,29 @@ def save_db():
     os.replace(tmp, DB_FILE)
 
 
+def infer_coins(name):
+    """«20 maksenet» → 20: такие предметы сразу зачисляются на баланс."""
+    m = re.match(r"^\s*(\d+)\s*(maksenet|максенет)", str(name), re.I)
+    return int(m.group(1)) if m else None
+
+
+def migrate():
+    """Проставляет coins у старых предметов и переносит уже выпавшие максенеты из инвентаря в баланс."""
+    changed = False
+    for it in DB["items"]:
+        if "coins" not in it:
+            it["coins"] = infer_coins(it["name"])
+            changed = True
+    coin_items = {str(i["id"]): i["coins"] for i in DB["items"] if i.get("coins")}
+    for u in DB["users"].values():
+        for iid in list(u["inv"]):
+            if iid in coin_items:
+                u["coins"] += u["inv"].pop(iid) * coin_items[iid]
+                changed = True
+    if changed:
+        save_db()
+
+
 def get_user(uid, name=None, username=None):
     u = DB["users"].get(str(uid))
     if not u:
@@ -82,6 +106,9 @@ def get_user(uid, name=None, username=None):
     if name:
         u["name"], u["username"] = name, username
     return u
+
+
+migrate()
 
 
 # ───────────────────────── шансы ─────────────────────────
@@ -179,7 +206,7 @@ def drop_active(d, now=None):
 
 
 def item_public(i):
-    return {"id": i["id"], "name": i["name"], "photo": i["photo"], "emoji": i.get("emoji"), "price": i["price"]}
+    return {"id": i["id"], "name": i["name"], "photo": i["photo"], "emoji": i.get("emoji"), "price": i["price"], "coins": i.get("coins")}
 
 
 async def api_state(request):
@@ -189,7 +216,7 @@ async def api_state(request):
     inv = []
     for iid, cnt in u["inv"].items():
         it = items.get(int(iid))
-        if it and cnt > 0:
+        if it and cnt > 0 and not it.get("coins"):
             inv.append({**item_public(it), "count": cnt})
     drops = [
         {"id": d["id"], "icon": d["icon"], "left": d["total"] - len(d["claimed"]), "seconds": int(d["expires"] - now)}
@@ -200,7 +227,7 @@ async def api_state(request):
         "user": {"id": u["id"], "name": u["name"], "coins": u["coins"]},
         "is_admin": request["is_admin"],
         "inventory": inv,
-        "shop": [item_public(i) for i in DB["items"]],
+        "shop": [item_public(i) for i in DB["items"] if not i.get("coins")],
         "drops": drops,
         "ton": {"address": TON_ADDRESS, "comment": f"drops{u['id']}", "rate": COINS_PER_TON},
     })
@@ -219,9 +246,12 @@ async def api_claim(request):
         return err("Дроп уже разобрали" if left <= 0 else "Время вышло")
     it = roll_item()
     d["claimed"][str(u["id"])] = it["id"]
-    u["inv"][str(it["id"])] = u["inv"].get(str(it["id"]), 0) + 1
+    if it.get("coins"):
+        u["coins"] += it["coins"]  # максенеты идут сразу на баланс
+    else:
+        u["inv"][str(it["id"])] = u["inv"].get(str(it["id"]), 0) + 1
     save_db()
-    return web.json_response({"item": item_public(it)})
+    return web.json_response({"item": item_public(it), "coins": u["coins"]})
 
 
 async def api_buy(request):
@@ -230,6 +260,8 @@ async def api_buy(request):
     it = next((x for x in DB["items"] if x["id"] == body.get("item_id")), None)
     if not it:
         return err("Товар не найден", 404)
+    if it.get("coins"):
+        return err("Этот предмет нельзя купить")
     if not it["price"]:
         return err("Цена пока не задана")
     if u["coins"] < it["price"]:
@@ -335,7 +367,9 @@ async def api_admin_item_add(request):
         return err("Шанс должен быть от 0 до 100")
     price = b.get("price")
     price = int(price) if price not in (None, "") and int(price) > 0 else None
-    it = {"id": DB["next_item"], "name": name, "photo": photo, "emoji": None, "chance": chance, "price": price}
+    coins = b.get("coins")
+    coins = int(coins) if coins not in (None, "") and int(coins) > 0 else infer_coins(name)
+    it = {"id": DB["next_item"], "name": name, "photo": photo, "emoji": None, "chance": chance, "price": price, "coins": coins}
     DB["next_item"] += 1
     DB["items"].append(it)
     set_chance(it, chance)
@@ -355,6 +389,9 @@ async def api_admin_item_update(request):
     if "price" in b:
         v = b["price"]
         it["price"] = int(v) if v not in (None, "") and int(v) > 0 else None
+    if "coins" in b:
+        v = b["coins"]
+        it["coins"] = int(v) if v not in (None, "") and int(v) > 0 else None
     if "chance" in b and b["chance"] not in (None, ""):
         c = float(b["chance"])
         if not 0 < c < 100:
