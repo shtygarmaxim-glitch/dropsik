@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Drops</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:#07020a;
+  --card:rgba(255,255,255,.07);
+  --card2:rgba(255,255,255,.10);
+  --line:rgba(255,255,255,.14);
+  --pink:#ff6eb4;
+  --pink2:#ffa6d5;
+  --pink-d:rgba(255,110,180,.20);
+  --text:#fff;
+  --dim:#c3a3b6;
+  --red:#ff5a7a;
+  --ok:#5ff0a8;
+  --glass:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 55%,rgba(255,110,180,.07));
+  --spec:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.04),0 10px 32px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:"Manrope","SF Pro Display",-apple-system,"Segoe UI",Roboto,sans-serif;
+  overscroll-behavior:none;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+
+/* фон: розово-чёрные «жидкие» пятна и девочка */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  background:radial-gradient(120% 80% at 50% 110%,#2a0a1f 0%,#0b0309 55%,#050106 100%)}
+.bg .girl{position:absolute;right:-18vw;bottom:-6vh;width:min(110vw,560px);aspect-ratio:1;border-radius:50%;
+  background:url(/static/girl.jpg) center/cover;opacity:.55;filter:saturate(1.15) blur(1px);
+  -webkit-mask-image:radial-gradient(circle at 50% 45%,#000 30%,transparent 70%);mask-image:radial-gradient(circle at 50% 45%,#000 30%,transparent 70%)}
+.blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.75;animation:float 14s ease-in-out infinite}
+.b1{width:60vmax;height:60vmax;max-width:520px;max-height:520px;left:-20vw;top:-10vh;background:radial-gradient(circle,#ff3d9a,transparent 68%)}
+.b2{width:50vmax;height:50vmax;max-width:440px;max-height:440px;right:-16vw;top:26vh;background:radial-gradient(circle,#a8227a,transparent 68%);animation-delay:-5s}
+.b3{width:44vmax;height:44vmax;max-width:380px;max-height:380px;left:6vw;bottom:-14vh;background:radial-gradient(circle,#ff7ab8,transparent 70%);opacity:.45;animation-delay:-9s}
+@keyframes float{50%{transform:translate(6vw,-4vh) scale(1.12)}}
+@media (prefers-reduced-motion:reduce){.blob,.drop{animation:none}}
+
+/* стекло */
+.bal,.gear,.item,nav,.copy,.sec-btn,.arow,.file,.pbox,.toast,input,select,.chip,.ava{
+  background:var(--glass);border:1px solid var(--line);
+  -webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);
+  box-shadow:var(--spec)}
+
+#app{position:fixed;inset:0;z-index:1;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 6px;gap:10px}
+.me{display:flex;align-items:center;gap:10px;min-width:0}
+.ava{width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,140,200,.7);
+  display:grid;place-items:center;font-weight:800;overflow:hidden;flex:none;padding:0;
+  box-shadow:var(--spec),0 0 18px rgba(255,110,180,.5)}
+.ava img{width:100%;height:100%;object-fit:cover}
+.me b{display:block;font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.right{display:flex;align-items:center;gap:8px}
+.bal{display:flex;align-items:center;gap:8px;border-radius:24px;padding:5px 5px 5px 16px;font-weight:800;font-size:18px}
+.bal.bump{animation:bump .5s ease}
+@keyframes bump{40%{transform:scale(1.12);box-shadow:var(--spec),0 0 26px rgba(255,110,180,.8)}}
+.plus{width:38px;height:38px;border-radius:50%;background:linear-gradient(145deg,#ff8cc6,#e0408f);color:#fff;font-size:26px;line-height:1;display:grid;place-items:center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 4px 14px rgba(255,80,160,.55)}
+.gear{width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
+.gear svg{width:20px;height:20px;stroke:var(--pink2)}
+
+/* screens */
+main{flex:1;overflow-y:auto;padding:10px 14px 130px;position:relative}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:30px 10px 0}
+.empty img{width:170px;height:170px;object-fit:cover;border-radius:36px;margin-bottom:22px;
+  border:1px solid rgba(255,255,255,.3);box-shadow:var(--spec),0 0 50px rgba(255,90,170,.5)}
+.empty h2{margin:0;font-size:24px;font-weight:800}
+.empty h3{margin:6px 0 0;font-size:18px;font-weight:800;color:var(--pink2)}
+.empty p{margin:8px 0 26px;color:var(--dim);font-weight:600;font-size:15px;max-width:290px}
+.cta{width:100%;max-width:420px;color:#fff;border-radius:18px;padding:17px;font-weight:800;font-size:17px;
+  background:linear-gradient(145deg,#ff86c4,#e0408f 60%,#b8206f);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 6px rgba(120,0,60,.35),0 8px 26px rgba(255,80,160,.45)}
+.cta:active{filter:brightness(.9);transform:scale(.99)}
+.cta[disabled]{background:var(--card2);color:var(--dim);box-shadow:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{border-radius:24px;padding:12px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.item::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(160deg,rgba(255,255,255,.18),transparent 38%)}
+.pic{aspect-ratio:1;border-radius:18px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:grid;place-items:center;overflow:hidden;font-size:54px}
+.pic img{width:100%;height:100%;object-fit:cover}
+.item .nm{font-weight:800;font-size:15px;line-height:1.2;overflow-wrap:anywhere}
+.cnt{position:absolute;top:18px;right:18px;background:linear-gradient(145deg,#ff86c4,#e0408f);border-radius:12px;padding:2px 9px;font-weight:800;font-size:14px;box-shadow:0 2px 10px rgba(255,80,160,.5)}
+.buy{background:var(--pink-d);color:var(--pink2);border:1px solid rgba(255,140,200,.35);border-radius:14px;padding:11px;font-weight:800;font-size:15px;display:flex;justify-content:center;align-items:center;gap:6px;position:relative}
+.buy[disabled]{background:var(--card);color:var(--dim);border-color:var(--line)}
+.head{font-weight:800;font-size:20px;margin:6px 2px 12px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+
+/* bottom nav */
+nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0));
+  display:flex;gap:4px;padding:5px;border-radius:36px;
+  width:min(330px,calc(100vw - 28px));z-index:20}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0 8px;border-radius:30px;color:var(--dim);font-weight:800;font-size:12px;transition:.2s}
+nav button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:#fff;background:linear-gradient(145deg,rgba(255,130,195,.45),rgba(224,64,143,.25));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 18px rgba(255,90,170,.4)}
+
+/* floating drop */
+.drop{position:fixed;z-index:15;width:84px;text-align:center;animation:bob 2.4s ease-in-out infinite}
+.drop img{width:84px;display:block;border-radius:18px;filter:drop-shadow(0 0 18px rgba(255,90,170,.7))}
+.drop span{display:inline-block;margin-top:6px;background:rgba(20,4,14,.7);border:1px solid rgba(255,140,200,.4);border-radius:12px;padding:3px 9px;font-size:12px;font-weight:800;color:#ffd3ea;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+@keyframes bob{50%{transform:translateY(-10px)}}
+
+/* sheets */
+.veil{position:fixed;inset:0;background:rgba(10,0,8,.6);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:40;display:none}
+.veil.on{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:linear-gradient(180deg,rgba(60,16,44,.78),rgba(14,4,12,.9));
+  -webkit-backdrop-filter:blur(30px) saturate(170%);backdrop-filter:blur(30px) saturate(170%);
+  border-top:1px solid rgba(255,255,255,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.3);
+  border-radius:30px 30px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0));max-height:88vh;overflow-y:auto;
+  transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.sheet h2{margin:0 0 14px;font-size:21px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.x{width:36px;height:36px;border-radius:50%;background:var(--card2);color:var(--pink2);font-size:20px}
+.sec{margin:18px 0 8px;font-weight:800;font-size:15px;color:var(--pink2)}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>*{flex:1;min-width:0}
+input,select{border-radius:14px;padding:13px 14px;width:100%;outline:none;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+input::placeholder{color:#a98a9c}
+input:focus,select:focus{border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,110,180,.25)}
+select{appearance:none}
+.chips{display:flex;gap:8px;margin-bottom:12px}
+.chip{flex:1;padding:12px 0;border-radius:14px;font-weight:800}
+.chip.on{background:linear-gradient(145deg,rgba(255,130,195,.5),rgba(224,64,143,.3));border-color:var(--pink);color:#fff}
+.note{color:var(--dim);font-size:13px;font-weight:600;line-height:1.4;margin:8px 0 12px}
+.copy{display:flex;justify-content:space-between;align-items:center;gap:10px;border-radius:14px;padding:12px 14px;margin-bottom:8px;font-weight:700;font-size:13px}
+.copy code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#ffd3ea}
+.copy button{color:var(--pink);font-weight:800;flex:none}
+.sec-btn{width:100%;border-radius:16px;padding:15px;font-weight:800;margin-top:8px}
+.list{display:flex;flex-direction:column;gap:8px}
+.arow{border-radius:20px;padding:10px;display:flex;gap:10px;align-items:center}
+.arow .pic{width:54px;aspect-ratio:1;font-size:26px;border-radius:12px;flex:none;cursor:pointer}
+.arow .f{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
+.arow .f .nm{grid-column:1/3;font-weight:800;font-size:14px}
+.arow input{padding:8px 10px;font-size:14px;border-radius:10px}
+.lbl{font-size:11px;color:var(--dim);font-weight:700;margin-bottom:2px}
+.mini{background:var(--pink-d);color:var(--pink2);border-radius:10px;padding:8px 10px;font-weight:800;font-size:13px;border:1px solid rgba(255,140,200,.3)}
+.mini.red{background:rgba(255,60,90,.15);color:var(--red);border-color:rgba(255,90,120,.3)}
+.file{display:flex;align-items:center;gap:12px;border-style:dashed;border-radius:16px;padding:12px;margin-bottom:8px;font-weight:700;color:var(--dim)}
+.file .pic{width:56px;font-size:24px;border-radius:12px;flex:none}
+.pct{color:var(--pink);font-weight:800}
+.chk{display:flex;align-items:center;gap:10px;margin:4px 0 12px;font-weight:700}
+.chk input{width:22px;height:22px;padding:0;accent-color:var(--pink)}
+
+/* prize modal */
+.prize{position:fixed;inset:0;z-index:60;background:rgba(10,0,8,.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:none;place-items:center}
+.prize.on{display:grid}
+.pbox{border-radius:32px;padding:26px 22px;width:min(320px,86vw);text-align:center;animation:pop .3s ease;
+  box-shadow:var(--spec),0 0 60px rgba(255,90,170,.45)}
+.pbox .pic{width:150px;margin:0 auto 16px;font-size:72px}
+.pbox h3{margin:0 0 4px;font-size:22px;font-weight:800}
+.pbox p{margin:0 0 20px;color:var(--pink2);font-weight:700}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0));transform:translate(-50%,-90px);z-index:80;
+  border-radius:16px;padding:12px 18px;font-weight:800;font-size:14px;transition:transform .25s;max-width:90vw;text-align:center}
+.toast.on{transform:translate(-50%,0)}
+.toast.bad{border-color:#7a2a40;color:#ffb0c0}
+.toast.good{border-color:#2a7a55;color:#9ff5c8}
+
+/* ===== полировка ===== */
+#gl{position:absolute;inset:0;width:100%;height:100%;display:none}
+.bg.gl #gl{display:block}
+.bg.gl .blob,.bg.gl .girl{display:none}
+.top{background:linear-gradient(180deg,rgba(7,2,10,.55),transparent)}
+.me b{background:linear-gradient(90deg,#fff,#ffc2e2);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
+.coin{width:20px;height:20px;border-radius:50%;flex:none;position:relative;
+  background:radial-gradient(circle at 32% 28%,#fff6c8,#ffc94d 45%,#e0891a);
+  box-shadow:inset 0 -2px 3px rgba(150,70,0,.5),0 0 12px rgba(255,200,80,.55)}
+.coin::after{content:"";position:absolute;inset:5px;border-radius:50%;border:1.5px solid rgba(160,80,0,.45)}
+.bal{padding-left:12px}
+.head{background:linear-gradient(90deg,#fff 30%,#ffb3da);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 10px rgba(0,0,0,.55))}
+.item{animation:rise .5s cubic-bezier(.2,.9,.3,1) both;transition:transform .2s}
+.item:active{transform:scale(.97)}
+.grid .item:nth-child(2){animation-delay:.06s}.grid .item:nth-child(3){animation-delay:.12s}
+.grid .item:nth-child(4){animation-delay:.18s}.grid .item:nth-child(n+5){animation-delay:.24s}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.96)}}
+.pic{position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 0 30px rgba(255,110,180,.18)}
+.pic::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(120deg,transparent 35%,rgba(255,255,255,.18) 48%,transparent 60%);transform:translateX(-120%);animation:shine 5s ease-in-out infinite}
+@keyframes shine{55%,100%{transform:translateX(120%)}}
+.buy{background:linear-gradient(145deg,rgba(255,140,200,.35),rgba(224,64,143,.2));color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 14px rgba(255,80,160,.25)}
+.buy:active{filter:brightness(.9)}
+.buy[disabled]{box-shadow:none}
+nav{box-shadow:var(--spec),0 0 40px rgba(255,80,160,.18)}
+nav button:active{transform:scale(.94)}
+.drop img{animation:glow 2s ease-in-out infinite}
+@keyframes glow{50%{filter:drop-shadow(0 0 30px rgba(255,120,190,.95))}}
+.pbox{position:relative}
+.pbox::before{content:"";position:absolute;left:50%;top:14px;width:190px;height:190px;margin-left:-95px;border-radius:50%;z-index:-1;
+  background:conic-gradient(#ff6eb4,transparent,#ffa6d5,transparent,#ff6eb4);filter:blur(22px);opacity:.75;animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+.pbox h3{background:linear-gradient(90deg,#fff,#ffb3da);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hint{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0));transform:translateX(-50%);z-index:10;
+  font-size:12px;font-weight:700;color:rgba(255,200,230,.75);letter-spacing:.3px;pointer-events:none;transition:opacity .6s;white-space:nowrap}
+
+/* hidden должен реально скрывать (раньше .gear с display:grid его перебивал) */
+[hidden]{display:none!important}
+.item.tap{cursor:pointer}
+.item.tap::after{content:"";position:absolute;inset:0}
+.cnt{z-index:2}
+.cta[disabled]{opacity:.7}
+
+/* Ростишка-Шторм: экран плывёт */
+@keyframes swim{
+  0%,100%{transform:translate(0,0) rotate(0) skew(0,0) scale(1)}
+  20%{transform:translate(2.4vw,-1.2vh) rotate(1.8deg) skew(2.2deg,-1deg) scale(1.03)}
+  40%{transform:translate(-2.2vw,1.6vh) rotate(-2deg) skew(-2.6deg,1.4deg) scale(.98)}
+  60%{transform:translate(1.6vw,2vh) rotate(1.2deg) skew(1.8deg,2deg) scale(1.025)}
+  80%{transform:translate(-1.8vw,-1.8vh) rotate(-1.5deg) skew(-1.4deg,-1.6deg) scale(.985)}
+}
+@keyframes hue{to{filter:hue-rotate(360deg)}}
+body.swim #app,body.swim #drops{animation:swim 4.6s ease-in-out infinite}
+body.swim .bg{animation:swim 5.4s ease-in-out infinite reverse,hue 7s linear infinite}
+</style>
+</head>
+<body>
+<div class="bg"><canvas id="gl"></canvas><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><div class="girl"></div></div>
+<div id="app">
+  <div class="top">
+    <div class="me">
+      <div class="ava" id="ava"></div>
+      <div><b id="uname">…</b></div>
+    </div>
+    <div class="right" id="right">
+      <div class="bal"><i class="coin"></i><span id="coins">0</span><button class="plus" id="topup" aria-label="Пополнить">+</button></div>
+    </div>
+  </div>
+
+  <main id="main"></main>
+
+  <nav>
+    <button data-tab="inv" class="on">
+      <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Инвентарь
+    </button>
+    <button data-tab="shop">
+      <svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Магазин
+    </button>
+  </nav>
+</div>
+
+<div id="drops"></div>
+<div class="veil" id="veil"></div>
+
+<!-- пополнение -->
+<section class="sheet" id="sh-top">
+  <h2>Пополнить<button class="x" data-close>×</button></h2>
+  <div class="chips" id="chips"></div>
+  <div class="note" id="topNote"></div>
+  <button class="cta" id="openWallet">Открыть кошелёк</button>
+  <div class="sec">Или переведите вручную</div>
+  <div class="copy"><code id="tAddr"></code><button data-copy="tAddr">Копировать</button></div>
+  <div class="copy"><code id="tCom"></code><button data-copy="tCom">Копировать</button></div>
+  <div class="note">Комментарий обязателен — по нему монеты попадут на ваш баланс. Обычно это занимает до минуты.</div>
+  <button class="sec-btn" id="checkPay">Проверить оплату</button>
+</section>
+
+<!-- предмет из инвентаря -->
+<section class="sheet" id="sh-item">
+  <h2><span id="iName"></span><button class="x" data-close>×</button></h2>
+  <div class="pic" id="iPic" style="width:140px;margin:0 auto 14px;font-size:64px"></div>
+  <div class="note" id="iDesc" style="text-align:center;font-size:14px"></div>
+  <button class="cta" id="iUse">Получить</button>
+</section>
+
+<!-- админ: подгружается в страницу только если сервер подтвердил, что это админ -->
+<template id="adm-tpl">
+<section class="sheet" id="sh-adm">
+  <h2>Админ-панель<button class="x" data-close>×</button></h2>
+
+  <div class="sec">Заявки на задания</div>
+  <div class="list" id="aReqs"></div>
+
+  <div class="sec">Новый дроп</div>
+  <div class="row"><input id="dN" type="number" inputmode="numeric" placeholder="Активаций" min="1"></div>
+  <div class="row">
+    <input id="dT" type="number" inputmode="numeric" placeholder="Время на сбор" min="1">
+    <select id="dU"><option value="1">сек</option><option value="60" selected>мин</option><option value="3600">часов</option></select>
+  </div>
+  <label class="chk"><input id="dNotify" type="checkbox" checked>Позвать всех сообщением в боте</label>
+  <button class="cta" id="mkDrop">Запустить дроп</button>
+
+  <div class="sec">Что выпадает</div>
+  <div class="note" id="sumNote"></div>
+  <div class="list" id="aItems"></div>
+
+  <div class="sec">Добавить предмет</div>
+  <label class="file"><div class="pic" id="nPic">＋</div><span>Выберите фото предмета</span><input type="file" id="nFile" accept="image/*" hidden></label>
+  <div class="row"><input id="nName" placeholder="Название"></div>
+  <div class="row"><input id="nChance" type="number" inputmode="decimal" placeholder="Шанс, %"><input id="nPrice" type="number" inputmode="numeric" placeholder="Цена, монет"></div>
+  <div class="row"><input id="nCoins" type="number" inputmode="numeric" placeholder="Даёт на баланс, монет (необязательно)"></div>
+  <button class="cta" id="addItem">Добавить</button>
+  <div class="note">Остальные шансы пересчитаются сами. Предмет сразу появится в магазине.</div>
+
+  <div class="sec">Последние дропы</div>
+  <div class="list" id="aDrops"></div>
+
+  <div class="sec">Выдать монеты</div>
+  <div class="row"><input id="gId" type="number" inputmode="numeric" placeholder="ID пользователя"><input id="gAmt" type="number" inputmode="numeric" placeholder="Монет"></div>
+  <button class="sec-btn" id="give">Выдать</button>
+  <div class="note" id="usersNote"></div>
+  <input type="file" id="editFile" accept="image/*" hidden>
+</section>
+</template>
+
+<div class="prize" id="prize"><div class="pbox">
+  <div class="pic" id="pPic"></div><h3 id="pName"></h3><p id="pSub">Добавлено в инвентарь</p>
+  <button class="cta" id="pOk">Класс</button>
+</div></div>
+<div class="hint" id="hint">проведи пальцем по фону ✦</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+try{ tg?.setHeaderColor('#07020a'); tg?.setBackgroundColor('#07020a'); tg?.disableVerticalSwipes?.(); }catch(e){}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n).toLocaleString('ru-RU');
+const devUid = new URLSearchParams(location.search).get('uid');
+
+async function api(path, body){
+  const r = await fetch('/api/' + path + (devUid ? (path.includes('?')?'&':'?') + 'uid=' + devUid : ''), {
+    method: body ? 'POST' : 'GET',
+    headers: {'Content-Type':'application/json','X-Init-Data': tg?.initData || ''},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(j.error || 'Ошибка сети');
+  return j;
+}
+
+let S = null, tab = 'inv', toastT, adminReady = false, swimUntil = 0;
+const pos = {};
+
+function toast(msg, kind){
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast on ' + (kind || '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', 2600);
+}
+const haptic = k => { try{ tg?.HapticFeedback?.notificationOccurred(k); }catch(e){} };
+
+function pic(it){
+  return it.photo ? `<img src="${esc(it.photo)}" alt="">` : esc(it.emoji || '🎁');
+}
+
+/* ───── отрисовка ───── */
+function render(){
+  if(!S) return;
+  $('#uname').textContent = S.user.name;
+  if(render.c != null && S.user.coins > render.c){ const b = $('.bal'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+  render.c = S.user.coins;
+  $('#coins').textContent = fmt(S.user.coins);
+  if(S.is_admin && !adminReady){ adminReady = true; initAdmin(); }
+  const photo = S.user.avatar || tg?.initDataUnsafe?.user?.photo_url;
+  $('#ava').innerHTML = `<img src="${esc(photo || '/static/girl.jpg')}" onerror="this.onerror=null;this.src='/static/girl.jpg'" alt="">`;
+
+  const m = $('#main');
+  if(tab === 'inv'){
+    if(!S.inventory.length){
+      m.innerHTML = `<div class="empty"><img src="/static/girl.jpg" alt="">
+        <h2>Инвентарь пуст</h2><h3>Дропов ещё не было?</h3>
+        <p>Когда на экране появится подарок — нажмите на него, пока не закончилось время.</p>
+        <button class="cta" id="goShop">Открыть магазин</button></div>`;
+      $('#goShop').onclick = () => setTab('shop');
+    } else {
+      m.innerHTML = `<div class="head">Ваши призы</div><div class="grid">` + S.inventory.map(i =>
+        `<div class="item tap" data-inv="${i.id}"><div class="pic">${pic(i)}</div><div class="cnt">×${i.count}</div><div class="nm">${esc(i.name)}</div></div>`).join('') + `</div>`;
+      m.querySelectorAll('[data-inv]').forEach(el => el.onclick = () => openItem(+el.dataset.inv));
+    }
+  } else {
+    if(!S.shop.length){ m.innerHTML = `<div class="empty"><h2>Магазин пуст</h2></div>`; }
+    else m.innerHTML = `<div class="head">Магазин</div><div class="grid">` + S.shop.map(i =>
+      `<div class="item"><div class="pic">${pic(i)}</div><div class="nm">${esc(i.name)}</div>` +
+      (i.price ? `<button class="buy" data-buy="${i.id}">${fmt(i.price)} монет</button>` : `<button class="buy" disabled>Цена не задана</button>`) + `</div>`).join('') + `</div>`;
+    m.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(+b.dataset.buy));
+  }
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  renderDrops();
+}
+
+function renderDrops(){
+  const box = $('#drops');
+  const ids = new Set(S.drops.map(d => d.id));
+  box.querySelectorAll('.drop').forEach(el => { if(!ids.has(+el.dataset.id)) el.remove(); });
+  S.drops.slice(0, 3).forEach(d => {
+    let el = box.querySelector(`.drop[data-id="${d.id}"]`);
+    if(!el){
+      if(!pos[d.id]) pos[d.id] = { x: 6 + Math.random() * 62, y: 18 + Math.random() * 48 };
+      el = document.createElement('button');
+      el.className = 'drop'; el.dataset.id = d.id;
+      el.style.left = pos[d.id].x + 'vw'; el.style.top = pos[d.id].y + 'vh';
+      el.innerHTML = `<img src="/static/icons/gift${d.icon}.png" alt="Дроп"><span></span>`;
+      el.onclick = () => claim(d.id, el);
+      box.appendChild(el);
+    }
+    d._t = Date.now() + d.seconds * 1000;
+    el.dataset.until = d._t; el.dataset.left = d.left;
+  });
+  tickDrops();
+}
+function tickDrops(){
+  document.querySelectorAll('.drop').forEach(el => {
+    const s = Math.max(0, Math.round((+el.dataset.until - Date.now()) / 1000));
+    el.querySelector('span').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')} · ${el.dataset.left} шт`;
+    if(s <= 0) el.remove();
+  });
+}
+setInterval(tickDrops, 500);
+
+function setTab(t){ tab = t; $('#main').scrollTop = 0; refresh.sig = null; render(); }
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+/* ───── действия ───── */
+async function refresh(){
+  try{
+    const n = await api('state');
+    const sig = JSON.stringify([n.user, n.inventory, n.shop, n.is_admin, tab]);
+    setSwim(n.swim || 0);
+    const changed = sig !== refresh.sig; refresh.sig = sig; S = n;
+    if(changed) render(); else renderDrops();
+  }
+  catch(e){ if(!S) $('#main').innerHTML = `<div class="empty"><h2>Не удалось войти</h2><p>${esc(e.message)}</p></div>`; }
+}
+
+async function claim(id, el){
+  el.style.pointerEvents = 'none';
+  try{
+    const r = await api('claim', {id});
+    el.remove();
+    haptic('success');
+    showPrize(r.item);
+  }catch(e){ haptic('error'); toast(e.message, 'bad'); el.remove(); }
+  refresh();
+}
+$('#pOk').onclick = () => $('#prize').classList.remove('on');
+
+let animT = null;
+function showPrize(item){
+  clearInterval(animT);
+  const box = $('#pPic'), ok = $('#pOk');
+  const fin = () => {
+    clearInterval(animT);
+    box.innerHTML = pic(item); $('#pName').textContent = item.name;
+    $('#pSub').textContent = item.coins ? `+${fmt(item.coins)} на баланс` : 'В инвентаре — нажми на приз, чтобы получить';
+    ok.disabled = false;
+  };
+  $('#prize').classList.add('on');
+  if(item.anim && item.anim.length > 1){
+    ok.disabled = true; $('#pName').textContent = '…'; $('#pSub').textContent = 'Открываем…';
+    box.innerHTML = `<img src="${esc(item.anim[0])}" alt="">`;
+    const img = box.firstChild; let i = 0;
+    animT = setInterval(() => { i++; img.src = item.anim[i % item.anim.length]; }, 110);
+    setTimeout(fin, 1500);
+  } else fin();
+}
+
+/* ───── предмет в инвентаре: описание + «Получить» ───── */
+let curItem = null;
+function openItem(id){
+  const it = S.inventory.find(x => x.id === id); if(!it) return;
+  curItem = it;
+  $('#iName').textContent = it.name; $('#iPic').innerHTML = pic(it);
+  $('#iDesc').textContent = it.desc || ''; $('#iUse').textContent = it.btn || 'Получить';
+  sheet('#sh-item');
+}
+function openUrl(url){
+  if(/^https?:\/\/t\.me\//.test(url) && tg?.openTelegramLink) tg.openTelegramLink(url);
+  else if(tg?.openLink) tg.openLink(url);
+  else window.open(url, '_blank');
+}
+$('#iUse').onclick = async () => {
+  if(!curItem) return;
+  const btn = $('#iUse'); btn.disabled = true;
+  try{
+    const r = await api('use', {item_id: curItem.id});
+    closeSheets(); haptic('success'); toast(r.message, 'good');
+    if(r.action?.type === 'link') openUrl(r.action.url);
+    await refresh();
+  }catch(e){ haptic('error'); toast(e.message, 'bad'); refresh(); }
+  btn.disabled = false;
+};
+
+/* ───── Ростишка-Шторм: экран плывёт (время хранится на сервере — переживает перезаход) ───── */
+function setSwim(sec){
+  if(sec > 0){
+    const u = Date.now() + sec * 1000;
+    if(!swimUntil || Math.abs(u - swimUntil) > 4000) swimUntil = u;
+    document.body.classList.add('swim');
+  } else { swimUntil = 0; document.body.classList.remove('swim'); }
+}
+setInterval(() => { if(swimUntil && Date.now() >= swimUntil){ swimUntil = 0; document.body.classList.remove('swim'); } }, 1000);
+
+async function buy(id){
+  try{ await api('buy', {item_id: id}); haptic('success'); toast('Куплено — в инвентаре', 'good'); }
+  catch(e){ haptic('error'); toast(e.message, 'bad'); }
+  refresh();
+}
+
+/* ───── шторки ───── */
+let openSheet = null;
+function sheet(id){
+  if(openSheet) $(openSheet).classList.remove('on');
+  openSheet = id; $(id).classList.add('on'); $('#veil').classList.add('on');
+}
+function closeSheets(){
+  if(openSheet) $(openSheet).classList.remove('on');
+  openSheet = null; $('#veil').classList.remove('on');
+}
+$('#veil').onclick = closeSheets;
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
+
+/* ───── пополнение ───── */
+let tonAmt = 1;
+function drawTop(){
+  $('#chips').innerHTML = [1,2,5,10].map(n => `<button class="chip ${n===tonAmt?'on':''}" data-n="${n}">${n} TON</button>`).join('');
+  $('#chips').querySelectorAll('.chip').forEach(c => c.onclick = () => { tonAmt = +c.dataset.n; drawTop(); });
+  $('#topNote').textContent = `${tonAmt} TON = ${fmt(tonAmt * S.ton.rate)} монет`;
+  $('#tAddr').textContent = S.ton.address || 'адрес не настроен';
+  $('#tCom').textContent = S.ton.comment;
+}
+$('#topup').onclick = () => { drawTop(); sheet('#sh-top'); };
+$('#openWallet').onclick = () => {
+  if(!S.ton.address) return toast('Адрес кошелька не настроен', 'bad');
+  const url = `ton://transfer/${S.ton.address}?amount=${tonAmt * 1e9}&text=${encodeURIComponent(S.ton.comment)}`;
+  tg?.openLink ? tg.openLink(url) : (location.href = url);
+};
+document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
+  try{ await navigator.clipboard.writeText($('#' + b.dataset.copy).textContent); toast('Скопировано', 'good'); }catch(e){ toast('Не удалось скопировать', 'bad'); }
+});
+$('#checkPay').onclick = async () => {
+  const before = S.user.coins;
+  try{ await api('deposit/check', {}); await refresh();
+    S.user.coins > before ? toast(`+${fmt(S.user.coins - before)} монет`, 'good') : toast('Платёж пока не найден — подождите минуту'); }
+  catch(e){ toast(e.message, 'bad'); }
+};
+
+/* ───── админка (создаётся только у админа) ───── */
+const GEAR_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+function initAdmin(){
+  document.body.appendChild($('#adm-tpl').content.cloneNode(true));
+  const g = document.createElement('button');
+  g.className = 'gear'; g.id = 'gear'; g.setAttribute('aria-label', 'Админ-панель'); g.innerHTML = GEAR_SVG;
+  $('#right').prepend(g);
+  $('#sh-adm [data-close]').onclick = closeSheets;
+let A = null, newPhoto = null;
+function fileToData(file, max = 256){
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      let d = c.toDataURL('image/webp', .85); if(!d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
+      res(d);
+    };
+    img.onerror = () => rej(new Error('Не удалось открыть фото'));
+    img.src = url;
+  });
+}
+async function loadAdmin(){
+  try{ A = await api('admin/data'); }catch(e){ return toast(e.message, 'bad'); }
+  $('#sumNote').textContent = 'Сумма шансов всегда 100%. Измените шанс — остальные подстроятся.';
+  $('#usersNote').textContent = `Пользователей в боте: ${A.users}`;
+  $('#aReqs').innerHTML = A.requests.length ? A.requests.map(r => `
+    <div class="arow"><div style="flex:1;min-width:0;font-weight:800;font-size:14px">${esc(r.name)}${r.username ? ' @' + esc(r.username) : ''}
+      <div class="lbl">${esc(r.item)} · id ${r.uid}</div></div>
+      <button class="mini" data-acc="${r.id}">Принять</button></div>`).join('') : '<div class="note">Заявок нет</div>';
+  $('#aReqs').querySelectorAll('[data-acc]').forEach(b => b.onclick = async () => {
+    try{ await api('admin/request/accept', {id: +b.dataset.acc}); toast('Принято, игроку ушло уведомление', 'good'); loadAdmin(); }
+    catch(e){ toast(e.message, 'bad'); }
+  });
+  $('#aItems').innerHTML = A.items.map(i => `
+    <div class="arow" data-id="${i.id}">
+      <div class="pic" data-photo="${i.id}">${pic(i)}</div>
+      <div class="f">
+        <div class="nm">${esc(i.name)} <span class="pct">${+i.chance.toFixed(2)}%</span></div>
+        <div><div class="lbl">Шанс, %</div><input data-f="chance" type="number" inputmode="decimal" value="${+i.chance.toFixed(2)}"></div>
+        <div><div class="lbl">Цена, монет</div><input data-f="price" type="number" inputmode="numeric" value="${i.price ?? ''}" placeholder="—"></div>
+        <div style="grid-column:1/3"><div class="lbl">Даёт на баланс (0 — обычный предмет)</div><input data-f="coins" type="number" inputmode="numeric" value="${i.coins ?? ''}" placeholder="—"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="mini" data-save="${i.id}">Сохр.</button><button class="mini red" data-del="${i.id}">Удал.</button></div>
+    </div>`).join('');
+  $('#aItems').querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
+    const row = b.closest('.arow');
+    try{ await api('admin/item/update', { id: +b.dataset.save,
+      chance: row.querySelector('[data-f=chance]').value, price: row.querySelector('[data-f=price]').value, coins: row.querySelector('[data-f=coins]').value });
+      toast('Сохранено', 'good'); await loadAdmin(); refresh(); }catch(e){ toast(e.message, 'bad'); }
+  });
+  $('#aItems').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if(!confirm('Удалить предмет? Он пропадёт из дропов и магазина.')) return;
+    try{ await api('admin/item/delete', {id: +b.dataset.del}); await loadAdmin(); refresh(); }catch(e){ toast(e.message, 'bad'); }
+  });
+  $('#aItems').querySelectorAll('[data-photo]').forEach(p => p.onclick = () => { editId = +p.dataset.photo; $('#editFile').click(); });
+  $('#aDrops').innerHTML = A.drops.length ? A.drops.map(d => `
+    <div class="arow"><img src="/static/icons/gift${d.icon}.png" style="width:48px;border-radius:10px" alt="">
+      <div style="flex:1;font-weight:800;font-size:14px">#${d.id} · ${d.claimed}/${d.total}
+        <div class="lbl">${d.cancelled ? 'отменён' : d.active ? 'идёт, ещё ' + Math.ceil(d.seconds/60) + ' мин' : 'завершён'}</div></div>
+      ${d.active ? `<button class="mini red" data-cancel="${d.id}">Стоп</button>` : ''}</div>`).join('') : '<div class="note">Пока пусто</div>';
+  $('#aDrops').querySelectorAll('[data-cancel]').forEach(b => b.onclick = async () => {
+    await api('admin/drop/cancel', {id: +b.dataset.cancel}); loadAdmin(); refresh();
+  });
+}
+let editId = null;
+$('#editFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f || !editId) return;
+  try{ await api('admin/item/update', {id: editId, photo: await fileToData(f)}); toast('Фото обновлено', 'good'); await loadAdmin(); refresh(); }
+  catch(err){ toast(err.message, 'bad'); }
+};
+$('#gear').onclick = () => { sheet('#sh-adm'); loadAdmin(); };
+
+$('#nFile').onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{ newPhoto = await fileToData(f); $('#nPic').innerHTML = `<img src="${newPhoto}" alt="">`; }catch(err){ toast(err.message, 'bad'); }
+};
+$('#addItem').onclick = async () => {
+  if(!newPhoto) return toast('Сначала выберите фото', 'bad');
+  try{
+    await api('admin/item', { name: $('#nName').value, chance: $('#nChance').value, price: $('#nPrice').value, coins: $('#nCoins').value, photo: newPhoto });
+    newPhoto = null; $('#nPic').textContent = '＋'; ['#nName','#nChance','#nPrice','#nCoins'].forEach(s => $(s).value = '');
+    toast('Предмет добавлен', 'good'); await loadAdmin(); refresh();
+  }catch(e){ toast(e.message, 'bad'); }
+};
+$('#mkDrop').onclick = async () => {
+  const seconds = Math.round(+$('#dT').value * +$('#dU').value);
+  try{
+    await api('admin/drop', { total: $('#dN').value, seconds, notify: $('#dNotify').checked });
+    toast('Дроп запущен', 'good'); $('#dN').value = $('#dT').value = ''; await loadAdmin(); refresh();
+  }catch(e){ toast(e.message, 'bad'); }
+};
+$('#give').onclick = async () => {
+  try{ const r = await api('admin/give', { user_id: $('#gId').value, amount: $('#gAmt').value });
+    toast(`Баланс: ${fmt(r.coins)}`, 'good'); $('#gAmt').value = ''; refresh(); }catch(e){ toast(e.message, 'bad'); }
+};
+
+}
+
+refresh();
+setInterval(refresh, 3000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) refresh(); });
+</script>
+
+<script>
+/* Жидкий фон: водишь пальцем — картинка размазывается, потом медленно возвращается */
+(function(){
+  const bg = document.querySelector('.bg'), cv = document.getElementById('gl');
+  const gl = cv.getContext('webgl', {antialias:false, alpha:false});
+  if(!gl) return;
+  const VS = 'attribute vec2 p;varying vec2 uv;void main(){uv=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
+  const FS_ADV = 'precision mediump float;varying vec2 uv;uniform sampler2D uC;uniform vec2 a,d;uniform float r,asp;' +
+    'void main(){vec2 pa=uv-a;pa.x*=asp;vec2 ab=d;ab.x*=asp;' +
+    'float t=clamp(dot(pa,ab)/max(dot(ab,ab),1e-8),0.,1.);vec2 q=pa-ab*t;' +
+    'float f=exp(-dot(q,q)/(r*r));gl_FragColor=texture2D(uC,uv-d*f);}';
+  const FS_RLX = 'precision mediump float;varying vec2 uv;uniform sampler2D uC,uB;uniform float k,t;' +
+    'void main(){vec2 w=vec2(sin(t+uv.y*5.),cos(t*.8+uv.x*4.))*.004*step(.0001,k);' +
+    'gl_FragColor=mix(texture2D(uC,uv),texture2D(uB,uv+w),k);}';
+  function prog(fs){
+    const mk=(t,src)=>{const sh=gl.createShader(t);gl.shaderSource(sh,src);gl.compileShader(sh);
+      if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));return sh;};
+    const pr=gl.createProgram();gl.attachShader(pr,mk(gl.VERTEX_SHADER,VS));gl.attachShader(pr,mk(gl.FRAGMENT_SHADER,fs));
+    gl.bindAttribLocation(pr,0,'p');gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS)) throw new Error('link');
+    const u={};pr.u=n=>u[n]||(u[n]=gl.getUniformLocation(pr,n));return pr;
+  }
+  let adv, rlx;
+  try{ adv = prog(FS_ADV); rlx = prog(FS_RLX); }catch(e){ return; }
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+
+  let W=0,H=0, base=null, T=[], cur=0, queue=[], lastAct=0, raf=0;
+  const girl = new Image(); let girlOk = false;
+
+  function tex(w,h){
+    const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null); return t;
+  }
+  function fbo(){
+    const t=tex(W,H), f=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0); return {t,f};
+  }
+  function bind(unit,t){ gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D,t); }
+
+  function baseCanvas(){
+    const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+    const m=Math.max(W,H);
+    const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#14040f'); g.addColorStop(.55,'#1e0717'); g.addColorStop(1,'#07020a');
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    const blob=(cx,cy,r,col,al)=>{const rg=x.createRadialGradient(cx,cy,0,cx,cy,r);
+      rg.addColorStop(0,col);rg.addColorStop(1,'rgba(0,0,0,0)');x.globalAlpha=al;x.fillStyle=rg;x.fillRect(cx-r,cy-r,r*2,r*2);};
+    blob(W*.1,H*.08,m*.62,'#ff3d9a',.85); blob(W*.98,H*.42,m*.5,'#b0237f',.8);
+    blob(W*.3,H*.98,m*.5,'#ff7ab8',.5);  blob(W*.85,H*.02,m*.4,'#7a1f86',.6);
+    blob(W*.5,H*.5,m*.35,'#ff4fa5',.25);
+    // шёлковые разводы — их красиво размазывать
+    x.lineCap='round';
+    for(let i=0;i<12;i++){
+      x.globalAlpha=.10+Math.random()*.16; x.lineWidth=W*(.012+Math.random()*.05);
+      x.strokeStyle=['#ffffff','#ff8cc6','#ff4fa5','#c04bd6'][i%4];
+      const y=Math.random()*H; x.beginPath(); x.moveTo(-20,y);
+      x.bezierCurveTo(W*.3,y-H*.25*Math.random(),W*.7,y+H*.25*Math.random(),W+20,y+(Math.random()-.5)*H*.4); x.stroke();
+    }
+    x.globalAlpha=1;
+    if(girlOk){
+      const S=Math.min(W*1.2,H*.72), t=document.createElement('canvas'); t.width=t.height=S; const y=t.getContext('2d');
+      y.drawImage(girl,0,0,S,S); y.globalCompositeOperation='destination-in';
+      const rg=y.createRadialGradient(S/2,S*.45,S*.12,S/2,S*.45,S*.5); rg.addColorStop(0,'#000');rg.addColorStop(.55,'rgba(0,0,0,.85)');rg.addColorStop(1,'rgba(0,0,0,0)');
+      y.fillStyle=rg; y.fillRect(0,0,S,S);
+      x.globalAlpha=.8; x.drawImage(t,W-S*.82,H-S*.88,S,S); x.globalAlpha=1;
+    }
+    return c;
+  }
+
+  function setup(){
+    const sc=Math.min(window.devicePixelRatio||1,2)*.55;
+    W=Math.max(2,Math.round(innerWidth*sc)); H=Math.max(2,Math.round(innerHeight*sc));
+    cv.width=W; cv.height=H;
+    T.forEach(o=>{gl.deleteTexture(o.t);gl.deleteFramebuffer(o.f);}); if(base) gl.deleteTexture(base);
+    base=tex(W,H); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.bindTexture(gl.TEXTURE_2D,base); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,baseCanvas());
+    T=[fbo(),fbo()]; cur=0; queue=[];
+    gl.viewport(0,0,W,H);
+    gl.useProgram(rlx); gl.bindFramebuffer(gl.FRAMEBUFFER,T[0].f);
+    bind(0,base); bind(1,base); gl.uniform1i(rlx.u('uC'),0); gl.uniform1i(rlx.u('uB'),1);
+    gl.uniform1f(rlx.u('k'),0); gl.uniform1f(rlx.u('t'),0); gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+    present(); kick();
+  }
+  function present(){
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.useProgram(rlx);
+    bind(0,T[cur].t); bind(1,base); gl.uniform1i(rlx.u('uC'),0); gl.uniform1i(rlx.u('uB'),1);
+    gl.uniform1f(rlx.u('k'),0); gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  }
+  function frame(now){
+    raf=0; let n=0;
+    gl.viewport(0,0,W,H);
+    while(queue.length && n++<8){
+      const s=queue.shift(), nx=1-cur;
+      gl.useProgram(adv); gl.bindFramebuffer(gl.FRAMEBUFFER,T[nx].f); bind(0,T[cur].t);
+      gl.uniform1i(adv.u('uC'),0); gl.uniform2f(adv.u('a'),s[0],s[1]); gl.uniform2f(adv.u('d'),s[2],s[3]);
+      gl.uniform1f(adv.u('r'),.14); gl.uniform1f(adv.u('asp'),W/H);
+      gl.drawArrays(gl.TRIANGLE_STRIP,0,4); cur=nx;
+    }
+    // медленно возвращаем к исходной картинке (+ лёгкое «дыхание»)
+    const nx=1-cur; gl.useProgram(rlx); gl.bindFramebuffer(gl.FRAMEBUFFER,T[nx].f);
+    bind(0,T[cur].t); bind(1,base); gl.uniform1i(rlx.u('uC'),0); gl.uniform1i(rlx.u('uB'),1);
+    gl.uniform1f(rlx.u('k'),.0028); gl.uniform1f(rlx.u('t'),now/1000);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4); cur=nx;
+    present();
+    if(queue.length || performance.now()-lastAct<9000) raf=requestAnimationFrame(frame);
+  }
+  function kick(){ lastAct=performance.now(); if(!raf && !document.hidden) raf=requestAnimationFrame(frame); }
+
+  function push(x0,y0,x1,y1){
+    const w=innerWidth,h=innerHeight;
+    let dx=(x1-x0)/w, dy=-(y1-y0)/h; const L=Math.hypot(dx,dy); if(L<1e-5) return;
+    const cap=.28; if(L>cap){dx*=cap/L;dy*=cap/L;}
+    if(queue.length>24) queue.shift();
+    queue.push([x0/w,1-y0/h,dx,dy]); kick();
+    const hint=document.getElementById('hint'); if(hint){hint.style.opacity=0;setTimeout(()=>hint.remove(),700);}
+  }
+  const last={};
+  addEventListener('touchstart',e=>{for(const t of e.changedTouches) last[t.identifier]=[t.clientX,t.clientY];},{passive:true});
+  addEventListener('touchmove',e=>{for(const t of e.changedTouches){const l=last[t.identifier];
+    if(l) push(l[0],l[1],t.clientX,t.clientY); last[t.identifier]=[t.clientX,t.clientY];}},{passive:true});
+  const end=e=>{for(const t of e.changedTouches) delete last[t.identifier];};
+  addEventListener('touchend',end,{passive:true}); addEventListener('touchcancel',end,{passive:true});
+  let md=null;
+  addEventListener('mousedown',e=>{md=[e.clientX,e.clientY];});
+  addEventListener('mousemove',e=>{if(md&&e.buttons&1){push(md[0],md[1],e.clientX,e.clientY);md=[e.clientX,e.clientY];}});
+  addEventListener('mouseup',()=>{md=null;});
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) kick(); });
+  let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(setup,250);});
+
+  girl.onload=()=>{girlOk=true;setup();}; girl.onerror=()=>{};
+  try{ setup(); bg.classList.add('gl'); }catch(e){ return; }
+  girl.src='/static/girl.jpg';
+})();
+</script>
+</body>
+</html>
