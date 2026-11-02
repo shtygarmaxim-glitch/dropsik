@@ -44,13 +44,10 @@ log = logging.getLogger("drops")
 def default_db():
     return {
         "users": {},
-        "items": [
-            {"id": 1, "name": "20 maksenet", "photo": None, "emoji": "🪙", "chance": 80.0, "price": None, "coins": 20},
-            {"id": 2, "name": "Войс донат", "photo": None, "emoji": "🎙", "chance": 20.0, "price": None, "coins": None},
-        ],
+        "items": [],
         "drops": [],
         "seen_tx": [],
-        "next_item": 3,
+        "next_item": 1,
         "next_drop": 1,
     }
 
@@ -109,6 +106,72 @@ def get_user(uid, name=None, username=None):
 
 
 migrate()
+
+
+# ───────────────────────── набор призов ─────────────────────────
+# Картинки кладём в папку static/img/ — имя файла любое из списка ниже, расширение любое (png/jpg/webp/gif).
+IMG_DIR = ROOT / "static" / "img"
+IMG_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+PRIZE_IMG = {  # ключ приза -> имя файла без расширения
+    "mute3h": "мут",
+    "maksenet5k": "5кмонет",
+    "maksenet3k": "3кмонет",
+    "question": "вопрос",
+    "ton1": "тон",
+    "floor_nft": "нфт",
+    "rostishka": "ростишка",
+}
+ROSTISHKA_ANIM_NAMES = [f"ростишка{i}" for i in range(1, 6)]
+
+
+def find_img(stem):
+    """Ищет static/img/<stem>.<любое расширение> (без учёта регистра), возвращает URL или None."""
+    import unicodedata
+    want = unicodedata.normalize("NFC", stem).lower()
+    try:
+        for f in IMG_DIR.iterdir():
+            if f.suffix.lower() in IMG_EXT and unicodedata.normalize("NFC", f.stem).lower() == want:
+                return "/static/img/" + quote(f.name)
+    except OSError:
+        pass
+    return None
+
+
+PRIZES = [
+    {"key": "mute3h",     "name": "Мут в стенке на 3 часа (кто угодно)", "emoji": "🔇", "chance": 5.0,  "price": 20000},
+    {"key": "maksenet5k", "name": "5к maksenet",                          "emoji": "🪙", "chance": 10.0, "price": 10000},
+    {"key": "maksenet3k", "name": "3к maksenet",                          "emoji": "🪙", "chance": 20.0, "price": 6000},
+    {"key": "question",   "name": "Любой вопрос",                         "emoji": "❓", "chance": 30.0, "price": 5000},
+    {"key": "ton1",       "name": "1 TON",                                "emoji": "💎", "chance": 0.5,  "price": None},
+    {"key": "floor_nft",  "name": "Флор NFT",                             "emoji": "🖼", "chance": 0.1,  "price": None},
+    {"key": "rostishka",  "name": "Ростишка",                             "emoji": None, "chance": 34.4, "price": None},
+]
+
+
+def ensure_prizes():
+    """Добавляет призы из PRIZES (один раз, по ключу). Старые предметы без key остаются, но с шансом 0."""
+    changed = False
+    if not DB.get("prizes_v2"):
+        for it in DB["items"]:
+            if not it.get("key"):
+                it["chance"] = 0.0
+        DB["prizes_v2"] = True
+        changed = True
+    have = {i.get("key") for i in DB["items"]}
+    for p in PRIZES:
+        if p["key"] in have:
+            continue
+        DB["items"].append({
+            "id": DB["next_item"], "key": p["key"], "name": p["name"], "photo": p.get("photo"),
+            "emoji": p["emoji"], "chance": p["chance"], "price": p["price"], "coins": None,
+        })
+        DB["next_item"] += 1
+        changed = True
+    if changed:
+        save_db()
+
+
+ensure_prizes()
 
 
 # ───────────────────────── шансы ─────────────────────────
@@ -205,8 +268,23 @@ def drop_active(d, now=None):
     return not d.get("cancelled") and now < d["expires"] and len(d["claimed"]) < d["total"]
 
 
+def item_photo(i):
+    stem = PRIZE_IMG.get(i.get("key"))
+    return (find_img(stem) if stem else None) or i["photo"]
+
+
 def item_public(i):
-    return {"id": i["id"], "name": i["name"], "photo": i["photo"], "emoji": i.get("emoji"), "price": i["price"], "coins": i.get("coins")}
+    return {"id": i["id"], "name": i["name"], "photo": item_photo(i), "emoji": i.get("emoji"), "price": i["price"], "coins": i.get("coins")}
+
+
+def claim_item_public(i):
+    """Предмет для ответа /api/claim: у «Ростишки» добавляется анимация открытия (5 картинок в случайном порядке)."""
+    d = item_public(i)
+    if i.get("key") == "rostishka":
+        frames = [u for u in (find_img(n) for n in ROSTISHKA_ANIM_NAMES) if u]
+        random.shuffle(frames)
+        d["anim"] = frames
+    return d
 
 
 async def api_state(request):
@@ -251,7 +329,7 @@ async def api_claim(request):
     else:
         u["inv"][str(it["id"])] = u["inv"].get(str(it["id"]), 0) + 1
     save_db()
-    return web.json_response({"item": item_public(it), "coins": u["coins"]})
+    return web.json_response({"item": claim_item_public(it), "coins": u["coins"]})
 
 
 async def api_buy(request):
